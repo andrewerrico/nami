@@ -1,22 +1,26 @@
+import { pathToFileURL } from "node:url";
+
+import { loadEnv } from "./core/env.js";
+import { createLogger } from "./core/logger.js";
+
 /**
  * Nami entry point.
  *
- * Phase 0, toolchain half: this is a stub that exists so the module graph,
- * the test runner and the type-checker have something real to resolve.
- *
- * The runtime half fills this in, in this order:
- *   1. zod-validated env/config loading (fail loudly at boot)
- *   2. pino logger
- *   3. discord.js client bootstrap + command/event loader
- *   4. `/ping`
- * See ROADMAP.md §6, Phase 0.
+ * Phase 0: config and logging are in place. Still to come, in this order:
+ * discord.js client bootstrap, command/event loader, `/ping`, and the first
+ * Drizzle migration. See ROADMAP.md §6.
  */
-export async function main(): Promise<void> {
-  await Promise.resolve();
-  throw new Error("nami: not implemented yet — see ROADMAP.md §6, Phase 0");
+export function main(): void {
+  // Before anything else. A bad config should fail here, loudly, not on the
+  // first command that happens to touch the missing value.
+  const env = loadEnv();
+  const logger = createLogger(env);
+
+  logger.info({ nodeEnv: env.NODE_ENV, logLevel: env.LOG_LEVEL }, "nami starting");
+  logger.warn("discord client is not wired up yet — see ROADMAP.md §6, Phase 0");
 }
 
-// Only run when executed directly, never on import (the tests import this file).
-if (import.meta.url === `file://${process.argv[1]}`) {
-  await main();
+// Only run when executed directly, never on import.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
 }

@@ -28,7 +28,7 @@ Nothing of the new bot exists yet. We are in planning.
 
 | | |
 |---|---|
-| Runtime | Node 22 LTS or newer, ESM (`"type": "module"`) |
+| Runtime | Node **22.9+**, ESM (`"type": "module"`). The floor is `--env-file-if-exists`, which the dev/start scripts use to load `.env` without a dotenv dependency. |
 | Language | **TypeScript**, strict mode. Pinned to 6.x — see `ROADMAP.md` §7. |
 | Library | discord.js v14 (14.27+) |
 | Database | PostgreSQL via Drizzle ORM, migrations checked in. Hosted on **Supabase** (free tier). Connect through the Supavisor **session** pooler on port 5432 — the direct host is IPv6-only on free. |
