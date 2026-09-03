@@ -83,3 +83,30 @@ describe("formatEnvError", () => {
     expect(report).not.toContain(valid.DISCORD_TOKEN);
   });
 });
+
+describe("optional variables", () => {
+  // .env.example ships every optional key present but blank, and an unset
+  // ${VAR} in a compose file expands to "" rather than disappearing. Both must
+  // read as "not set", not as "set to an invalid value".
+  it("treats a blank value as absent", () => {
+    expect(parseEnv({ ...valid, DISCORD_GUILD_ID: "" }).DISCORD_GUILD_ID).toBeUndefined();
+  });
+
+  it("treats a missing value as absent", () => {
+    const { DISCORD_GUILD_ID: _omitted, ...withoutGuild } = {
+      ...valid,
+      DISCORD_GUILD_ID: "1",
+    };
+    expect(parseEnv(withoutGuild).DISCORD_GUILD_ID).toBeUndefined();
+  });
+
+  it("still rejects a value that is present and malformed", () => {
+    expect(() => parseEnv({ ...valid, DISCORD_GUILD_ID: "not-a-snowflake" })).toThrow();
+  });
+
+  it("accepts a valid snowflake", () => {
+    expect(
+      parseEnv({ ...valid, DISCORD_GUILD_ID: "474933751982587904" }).DISCORD_GUILD_ID,
+    ).toBe("474933751982587904");
+  });
+});

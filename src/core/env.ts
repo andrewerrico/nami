@@ -17,6 +17,18 @@ const snowflake = z
   .string()
   .regex(/^\d{17,20}$/, "must be a Discord snowflake (17-20 digits)");
 
+/**
+ * Makes a schema optional and treats a blank value as absent.
+ *
+ * `.optional()` alone is not enough: a variable present but empty — which is
+ * exactly how `.env.example` ships every optional key, and what an unset
+ * `${VAR}` expands to in a compose file — arrives as `""`, not `undefined`, and
+ * fails validation with a message about the format of something the user
+ * deliberately left blank.
+ */
+const optional = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === "" ? undefined : value), schema.optional());
+
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 
@@ -32,6 +44,12 @@ export const envSchema = z.object({
 
   /** Needed to register slash commands; not secret. */
   DISCORD_APPLICATION_ID: snowflake,
+
+  /* Optional. When set, `pnpm register` writes commands to this one guild,
+     where they appear immediately. Global commands can take up to an hour to
+     propagate, which makes iterating on a command definition miserable.
+     Unset means global. */
+  DISCORD_GUILD_ID: optional(snowflake),
 
   DATABASE_URL: z
     .string()

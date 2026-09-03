@@ -265,11 +265,31 @@ based on what the server actually asks for.
       **Connect via the Supavisor session pooler on port 5432** — the direct
       `db.<ref>.supabase.co` host is IPv6-only on free, and transaction mode
       (6543) breaks prepared statements.
-- [ ] **Dev database.** Supabase free caps at 2 projects. Prefer local Postgres
-      in Docker for dev rather than burning the second slot — better prod parity
-      anyway, and it keeps the spare project for a staging bot if wanted.
+- [x] **Dev database — decided: the one Supabase project, for now.**
+      `nami-prod` (us-east-1) is currently the only database, used for both dev
+      and deploy. That is fine while nothing is deployed and `guild_config` has
+      no rows — it is not "dev sharing prod", there simply is no prod yet.
+
+      **The trigger to split is a state, not a date:** the moment Nami runs
+      continuously in the server *and* schema work is happening locally, at
+      which point a half-finished migration lands on tables a live bot is
+      reading. The split can then be either the second free Supabase slot or a
+      local Postgres container — a ~10-line addition to `compose.yaml`, deferred
+      until it earns its keep.
+
+- [x] **Supabase Data API — decided: disabled.** PostgREST is an HTTP endpoint
+      onto the database guarded only by RLS policies and the anon key. Nothing
+      in this design uses it: Drizzle talks the Postgres wire protocol on 5432,
+      and a web dashboard is out of scope. Automatic RLS is left on as defence
+      in depth — it costs nothing, because Drizzle migrations run as `postgres`
+      and a table's owner bypasses RLS unless `FORCE ROW LEVEL SECURITY` is set.
+      Worth remembering that RLS with no policies returns *zero rows* rather
+      than an error, which would look exactly like data loss if we ever add a
+      non-owner role (a restricted backup user, say).
 - [ ] **Backups.** Supabase free has none. `pg_dump` on a schedule to off-box
-      storage is the minimum bar before any economy data exists.
+      storage is the minimum bar before any economy data exists. Not urgent
+      while the schema is config-only; becomes gating in Phase 4, when XP and
+      credit balances start existing.
 - [ ] **Inbound HTTPS for Phase 3.** The gateway connection is outbound-only, so
       self-hosting needs no open ports — but Twitch EventSub is a _webhook_ and
       needs a public HTTPS endpoint. Cloudflare Tunnel is the likely answer (no
