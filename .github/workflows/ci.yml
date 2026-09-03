@@ -12,6 +12,28 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+
+    services:
+      # Integration tests run against a real Postgres rather than a mock, so a
+      # migration that does not apply fails here instead of on the deployed
+      # database. Matches the major version Supabase runs.
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: nami
+          POSTGRES_PASSWORD: nami
+          POSTGRES_DB: nami
+        ports:
+          - 5432:5432
+        # The job starts as soon as the container does, which is before Postgres
+        # accepts connections — it restarts itself once during first-run
+        # initialisation. Without this the first test races that restart.
+        options: >-
+          --health-cmd "pg_isready -U nami -d nami"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
     steps:
       - uses: actions/checkout@v4
 
@@ -28,7 +50,13 @@ jobs:
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
+
+      # TEST_DATABASE_URL is what un-skips the integration tests. It is
+      # deliberately not DATABASE_URL: nothing in CI should be able to reach a
+      # real database, and the tests refuse any non-loopback host anyway.
       - run: pnpm test
+        env:
+          TEST_DATABASE_URL: postgresql://nami:nami@localhost:5432/nami
 
   # Builds the production image. Nothing here has a Discord token or a database,
   # so this proves the image *builds* — that the lockfile resolves, TypeScript

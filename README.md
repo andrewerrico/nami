@@ -19,10 +19,16 @@ Node 22.9+ (ESM) · TypeScript strict · discord.js v14 · PostgreSQL via Drizzl
 ```bash
 pnpm install
 cp .env.example .env      # then fill it in — every key is documented in the file
+docker compose --profile dev up -d postgres   # local dev database
 pnpm db:migrate           # create the schema
 pnpm register             # publish slash commands to Discord
 pnpm dev                  # run with reload
 ```
+
+Development runs against a Postgres container; production is Supabase. The
+deploy host never reads a `.env` — Portainer holds those values — so the two
+configurations cannot be confused. TLS is decided from the connection URL:
+loopback connects in plaintext, anything else requires it.
 
 `DISCORD_GUILD_ID` is optional but worth setting: with it, `pnpm register`
 publishes to that one server and commands appear immediately. Without it,
@@ -36,7 +42,7 @@ registration is global and can take up to an hour to propagate.
 | `pnpm build` | Compile to `dist/` |
 | `pnpm start` | Run compiled output |
 | `pnpm check` | Format, lint, typecheck, test — the same gate CI runs |
-| `pnpm test` | Vitest |
+| `pnpm test` | Vitest. Integration tests skip unless `TEST_DATABASE_URL` is set |
 | `pnpm db:generate` | Diff the schema and emit a migration into `drizzle/` |
 | `pnpm db:migrate` | Apply pending migrations |
 | `pnpm db:studio` | Browse the database |

@@ -6,6 +6,9 @@
 #   docker compose run --rm register  publish slash commands to Discord
 #   docker compose down               stop everything
 #
+#   docker compose --profile dev up -d postgres    start the dev database
+#   docker compose --profile dev down -v           stop it and delete its data
+#
 # Secrets come from .env, which is gitignored and is *not* baked into the image
 # (see .dockerignore). Compose reads it from the host at run time.
 
@@ -94,3 +97,51 @@ services:
     profiles: [tools]
     environment: *nami-env
     command: ["node", "dist/scripts/register-commands.js"]
+
+  # --- development database -------------------------------------------------
+  # Behind the `dev` profile, so neither `docker compose up` nor a Portainer
+  # deployment ever starts it. Production is Supabase; this exists so schema
+  # work does not run against the database a live bot is reading (ROADMAP §7).
+  #
+  #   docker compose --profile dev up -d postgres
+  #
+  # Then point DATABASE_URL in .env at it. The mini PC never reads that file —
+  # Portainer holds production values in its own store — so local .env is
+  # simply the dev config and there is no flag to forget.
+  postgres:
+    # Matches the major version Supabase runs (17.6), so a migration that
+    # applies here applies there.
+    image: postgres:17-alpine
+    profiles: [dev]
+    container_name: nami-postgres
+
+    environment:
+      POSTGRES_USER: nami
+      POSTGRES_PASSWORD: nami
+      POSTGRES_DB: nami
+
+    ports:
+      # Bound to loopback, not 0.0.0.0. Without the 127.0.0.1 prefix Docker
+      # publishes the port on every interface *and* punches through the host
+      # firewall, putting a trivially-credentialed Postgres on the network.
+      - "127.0.0.1:5432:5432"
+
+    volumes:
+      - nami-pgdata:/var/lib/postgresql/data
+
+    healthcheck:
+      # `pg_isready` returns success once the server accepts connections, which
+      # is later than the container being "up" — Postgres restarts itself once
+      # during first-run initialisation.
+      test: ["CMD-SHELL", "pg_isready -U nami -d nami"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+    restart: unless-stopped
+
+volumes:
+  # Named, so `docker compose --profile dev down` keeps your data and only
+  # `down -v` discards it.
+  nami-pgdata:

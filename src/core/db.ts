@@ -9,19 +9,48 @@ import * as schema from "../schema.js";
 export type Database = ReturnType<typeof createDatabase>["db"];
 
 /**
- * Connection settings for Supabase's Supavisor **session** pooler (port 5432).
+ * Whether to negotiate TLS for a given connection string.
+ *
+ * A hosted database must have it; a Postgres container on loopback cannot —
+ * the official image ships without a certificate, so demanding TLS fails the
+ * handshake outright. Hardcoding either answer breaks the other environment.
+ *
+ * An explicit `sslmode` in the URL always wins. Otherwise loopback is inferred
+ * as plaintext, which covers the common dev case without ceremony. Exported
+ * for tests.
+ */
+export function sslModeFor(url: string): "require" | false {
+  const parsed = new URL(url);
+
+  const explicit = parsed.searchParams.get("sslmode");
+  if (explicit !== null) {
+    /* Postgres defines several modes; postgres-js only distinguishes "off" from
+       "on". `disable` is the only one that means off. */
+    return explicit === "disable" ? false : "require";
+  }
+
+  const host = parsed.hostname;
+  const isLoopback =
+    host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]";
+
+  return isLoopback ? false : "require";
+}
+
+/**
+ * Connection settings, tuned for Supabase's Supavisor **session** pooler
+ * (port 5432) and equally valid against a local container.
  *
  * See ROADMAP.md §7 for why that target and not the alternatives: the direct
  * host is IPv6-only on the free tier, and the transaction pooler on 6543 breaks
  * prepared statements — which postgres-js uses by default.
  */
-function connectionOptions(): postgres.Options<Record<string, never>> {
+function connectionOptions(env: Env): postgres.Options<Record<string, never>> {
   return {
     /* Supabase terminates TLS but presents a certificate for the pooler
        hostname that does not chain to a root in Node's default store. `require`
        encrypts the connection without verifying that chain, which is what every
        Supabase client does; `verify-full` would need their CA bundle pinned. */
-    ssl: "require",
+    ssl: sslModeFor(env.DATABASE_URL),
 
     /* A gateway bot is one process with bursty, short queries. The default pool
        of 10 is more than this workload needs and each connection is a real slot
@@ -51,7 +80,7 @@ function connectionOptions(): postgres.Options<Record<string, never>> {
  * startup failure rather than a first-command failure.
  */
 export function createDatabase(env: Env) {
-  const client = postgres(env.DATABASE_URL, connectionOptions());
+  const client = postgres(env.DATABASE_URL, connectionOptions(env));
   const db = drizzle(client, { schema });
   return { client, db };
 }

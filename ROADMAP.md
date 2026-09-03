@@ -265,17 +265,22 @@ based on what the server actually asks for.
       **Connect via the Supavisor session pooler on port 5432** — the direct
       `db.<ref>.supabase.co` host is IPv6-only on free, and transaction mode
       (6543) breaks prepared statements.
-- [x] **Dev database — decided: the one Supabase project, for now.**
-      `nami-prod` (us-east-1) is currently the only database, used for both dev
-      and deploy. That is fine while nothing is deployed and `guild_config` has
-      no rows — it is not "dev sharing prod", there simply is no prod yet.
+- [x] **Dev database — resolved: local Postgres in Docker.** The trigger fired
+      at the end of Phase 0: Nami now runs continuously in the server, and
+      Phase 1 adds columns to `guild_config`, so schema iteration would
+      otherwise land on tables a live bot is reading.
 
-      **The trigger to split is a state, not a date:** the moment Nami runs
-      continuously in the server *and* schema work is happening locally, at
-      which point a half-finished migration lands on tables a live bot is
-      reading. The split can then be either the second free Supabase slot or a
-      local Postgres container — a ~10-line addition to `compose.yaml`, deferred
-      until it earns its keep.
+      Chosen over the spare Supabase slot on four counts: localhost queries are
+      sub-millisecond against ~300 ms hosted, so tests are fast enough to
+      actually run; CI can use a service container instead of holding
+      production credentials; it works offline; and it leaves the second free
+      project available for a real staging bot.
+
+      The split needs no flag and no discipline to maintain. `.env` on a
+      workstation points at the container and is the dev config; production
+      values live in Portainer's own store on the mini PC, which never reads a
+      `.env`. TLS follows from the URL — loopback plaintext, anything else
+      required — so one code path serves both.
 
 - [x] **Supabase Data API — decided: disabled.** PostgREST is an HTTP endpoint
       onto the database guarded only by RLS policies and the anon key. Nothing
