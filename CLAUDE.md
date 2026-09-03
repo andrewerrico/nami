@@ -96,12 +96,14 @@ These exist because the legacy codebase violated every one of them.
 - **Check the platform before building anything.** Discord absorbed a large
   amount of former bot territory between 2018 and now (`ROADMAP.md` §2–3). The
   first question for any feature is whether Discord already ships it.
-- **Commit straight to `main` for now.** Nothing is deployed and nobody else
-  is committing, so a branch would isolate this work from a trunk that never
-  moves. CI runs on pushes to `main`, so the gate still fires. **This changes
-  once Phase 0 exits with a bot running in the server** — at that point `main`
-  is production and feature/chore work moves onto short-lived branches merged by
-  PR. Branch per shippable slice, not per roadmap phase; Phase 2 alone is six
-  pieces of work.
+- **Short-lived branches, merged by PR.** `main` is production — Nami is
+  deployed from it to the mini PC via Portainer, so a bad push is a bad deploy.
+  Branch per shippable slice, not per roadmap phase; Phase 2 alone is six pieces
+  of work. CI gates both the PR and the push.
+
+  _This replaced "commit straight to `main`" when Phase 0 exited with the bot
+  running in the server, which was the trigger this rule always named. Before
+  that, nothing was deployed and a branch would only have isolated the work from
+  a trunk that never moved._
 - **The legacy bot is tagged `botnami-v0`.** That tag is the permanent reference
   point and outlives `legacy/`, so deleting that directory needs no ceremony.

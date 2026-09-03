@@ -1,6 +1,7 @@
 # Nami — Roadmap
 
-> **Status:** planning. Living document — amend freely.
+> **Status:** Phase 0 complete — Nami is deployed and serving `/ping` in the
+> server. Phase 1 next. Living document — amend freely.
 > **Companion docs:** `CLAUDE.md` (working rules), `../AUDIT.md` (legacy audit).
 
 ---
@@ -219,15 +220,39 @@ transactional balance mutations with a floor at zero.
 
 ## 6. Milestones
 
-**Phase 0 — Foundations.** Fresh repo layout, TypeScript, lint, CI, Docker.
-Config + secret loading with zod validation and a clean failure message (the
-legacy bot threw `MODULE_NOT_FOUND` on a missing `auth.json`). Postgres with a
-first migration. Structured logging. Command/event loader. `/ping`. Deployed and
-staying up. _Exit criterion: a bot that does almost nothing, correctly, in prod._
+**Phase 0 — Foundations. ✅ Complete.** Fresh repo layout, TypeScript, lint, CI,
+Docker. Config + secret loading with zod validation and a clean failure message
+(the legacy bot threw `MODULE_NOT_FOUND` on a missing `auth.json`). Postgres
+with a first migration. Structured logging. Command/event loader. `/ping`.
+Deployed and staying up. _Exit criterion: a bot that does almost nothing,
+correctly, in prod._
+
+What actually shipped, beyond the list above:
+
+- Deployed as a Docker container on the Ubuntu mini PC, managed by Portainer
+  from this repository. Gateway-only, so no inbound ports.
+- Features are discovered through an explicit registry rather than a filesystem
+  scan — a misspelled path is a compile error, not a command that silently
+  fails to appear.
+- Intents are `Guilds` alone. Each absent intent is documented in
+  `src/core/client.ts` with what would justify adding it.
+- Commands and events are registered to Discord and applied to the database by
+  explicit scripts, never at boot.
+- A local Postgres container for development, with integration tests that run
+  the checked-in migrations against a clean database. CI runs them too.
+
+**Consequence: `main` is production now.** Portainer deploys from it, so the
+branching rule in `CLAUDE.md` changes — feature work moves onto short-lived
+branches merged by PR, one per shippable slice.
 
 **Phase 1 — Arrival.** Server-side: Community mode, Rules Screening, Onboarding
 configured by hand and documented. Bot-side: welcome messages, persistent role
 picker, mod-log channel, `/setup` diagnostics.
+
+_Blocked on one decision before any code:_ Community mode has to be acceptable
+for this server, because Rules Screening and Onboarding both require it and it
+changes some server-level defaults. See §7. It also needs `GuildMembers`, which
+is toggled on in the portal but not yet requested in `src/core/client.ts`.
 
 **Phase 2 — Moderation.** Timeout, kick, ban, purge, warn + history. Full audit
 logging. AutoMod configured natively alongside.
