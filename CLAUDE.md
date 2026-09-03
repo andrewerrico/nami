@@ -96,10 +96,10 @@ These exist because the legacy codebase violated every one of them.
 - **Check the platform before building anything.** Discord absorbed a large
   amount of former bot territory between 2018 and now (`ROADMAP.md` §2–3). The
   first question for any feature is whether Discord already ships it.
-- **Commit straight to `master` for now.** Nothing is deployed and nobody else
+- **Commit straight to `main` for now.** Nothing is deployed and nobody else
   is committing, so a branch would isolate this work from a trunk that never
-  moves. CI runs on pushes to `master`, so the gate still fires. **This changes
-  once Phase 0 exits with a bot running in the server** — at that point `master`
+  moves. CI runs on pushes to `main`, so the gate still fires. **This changes
+  once Phase 0 exits with a bot running in the server** — at that point `main`
   is production and feature/chore work moves onto short-lived branches merged by
   PR. Branch per shippable slice, not per roadmap phase; Phase 2 alone is six
   pieces of work.
