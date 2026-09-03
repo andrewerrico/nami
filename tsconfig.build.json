@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+
+  /* The production build. The base config also covers tests, `vitest.config.ts`
+     and `drizzle.config.ts` so the editor and `pnpm typecheck` see everything;
+     none of that belongs in the image. */
+  "include": ["src", "scripts"],
+  "exclude": ["node_modules", "dist", "legacy", "**/*.test.ts"]
+}

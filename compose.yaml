@@ -1,0 +1,96 @@
+# Nami — Docker Compose.
+#
+#   docker compose up -d --build      start the bot
+#   docker compose logs -f bot        follow its logs
+#   docker compose run --rm migrate   apply pending migrations
+#   docker compose run --rm register  publish slash commands to Discord
+#   docker compose down               stop everything
+#
+# Secrets come from .env, which is gitignored and is *not* baked into the image
+# (see .dockerignore). Compose reads it from the host at run time.
+
+# A YAML anchor, not a Compose feature — `<<: *nami-env` below expands it. Every
+# service needs the same environment because they all boot through the same
+# `loadEnv()`, which validates the whole schema or exits.
+#
+# Named explicitly rather than using `env_file: .env`. `env_file` passes through
+# whatever happens to be in the file, so an unrelated variable in your shell or
+# a stale key silently reaches the container. This lists exactly what Nami
+# reads, and `:?` turns a missing one into a startup error rather than an empty
+# string that fails validation later with a confusing message.
+x-nami-env: &nami-env
+  DISCORD_TOKEN: ${DISCORD_TOKEN:?DISCORD_TOKEN is required}
+  DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID:?DISCORD_APPLICATION_ID is required}
+  DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+  DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  # NODE_ENV is set in the image and deliberately not overridable here: it is
+  # what selects JSON logging over pino-pretty, which is not installed.
+
+x-nami-build: &nami-build
+  context: .
+  dockerfile: Dockerfile
+
+services:
+  bot:
+    build: *nami-build
+    image: nami:latest
+    container_name: nami
+    environment: *nami-env
+
+    # Comes back after a crash and after a host reboot, but stays down if it was
+    # stopped on purpose. `always` would fight you every time you stop it.
+    restart: unless-stopped
+
+    # Reap zombies. Node handles its own signals — lifecycle.ts installs SIGTERM
+    # and SIGINT handlers — so this is not what makes shutdown work; it is here
+    # because PID 1 inherits orphaned children and nothing else would collect
+    # them.
+    init: true
+
+    # The gateway connection is outbound-only, so no ports are published and the
+    # mini PC needs nothing forwarded. This changes in Phase 3: Twitch EventSub
+    # is a webhook and needs inbound HTTPS. ROADMAP §7 leans toward a Cloudflare
+    # Tunnel over an open port.
+
+    # Default is 10s. The shutdown path closes the gateway and drains the
+    # Postgres pool — measured at ~70ms locally — so this is headroom, not an
+    # expectation.
+    stop_grace_period: 20s
+
+    logging:
+      # pino writes one JSON object per line, and without a cap those files grow
+      # until the disk fills. This is the most common way a hobby self-host dies.
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # --- one-shot tools ------------------------------------------------------
+  # Both sit behind the `tools` profile so `docker compose up` never starts
+  # them. `docker compose run` enables a service's profile automatically, so
+  # they still work without naming it.
+
+  # docker compose run --rm migrate
+  #
+  # Deliberately not part of the bot's startup. Two instances booting together
+  # would both try to migrate, and a schema change should fail on its own rather
+  # than inside a restart loop.
+  migrate:
+    build: *nami-build
+    image: nami:latest
+    profiles: [tools]
+    environment: *nami-env
+    command: ["node", "dist/scripts/migrate.js"]
+
+  # docker compose run --rm register
+  #
+  # Publishes slash command definitions. Registration is a rate-limited write
+  # against a global API; running it at boot would turn a crash-loop into an API
+  # ban. Append --global or --clear as needed.
+  register:
+    build: *nami-build
+    image: nami:latest
+    profiles: [tools]
+    environment: *nami-env
+    command: ["node", "dist/scripts/register-commands.js"]

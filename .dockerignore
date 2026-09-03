@@ -1,0 +1,29 @@
+# Everything the build does not need. Each entry here is build context that is
+# never uploaded to the daemon, which is both faster and safer — a secret that
+# is not in the context cannot end up in a layer.
+
+.env
+.env.*
+!.env.example
+
+.git
+.github
+node_modules
+dist
+
+legacy
+
+*.md
+!README.md
+
+.vscode
+.idea
+.DS_Store
+coverage
+
+# Tests and tooling config. The image runs compiled JS; it never lints or tests.
+**/*.test.ts
+vitest.config.ts
+eslint.config.js
+.prettierrc
+.prettierignore

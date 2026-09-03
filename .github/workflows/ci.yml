@@ -29,3 +29,44 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+
+  # Builds the production image. Nothing here has a Discord token or a database,
+  # so this proves the image *builds* — that the lockfile resolves, TypeScript
+  # compiles, and the runtime stage has what it needs. It cannot prove the bot
+  # connects; that is what running it does.
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: nami:ci
+          # Reuses layers between runs so this stays well under a minute once
+          # dependencies stop changing.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # A built image that dies on startup is still broken. This runs the real
+      # entry point with a deliberately invalid config and asserts it fails the
+      # way it is designed to: a named variable, not a stack trace.
+      - name: Image fails cleanly on bad config
+        run: |
+          output=$(docker run --rm \
+            -e DISCORD_TOKEN=short \
+            -e DISCORD_APPLICATION_ID=nope \
+            -e DATABASE_URL=mysql://wrong \
+            nami:ci 2>&1) && exit_code=0 || exit_code=$?
+
+          echo "$output"
+          test "$exit_code" -eq 1 || { echo "expected exit 1, got $exit_code"; exit 1; }
+          grep -q "Invalid environment configuration" <<<"$output"
+          grep -q "DISCORD_TOKEN" <<<"$output"
+          grep -q "DISCORD_APPLICATION_ID" <<<"$output"
+          grep -q "DATABASE_URL" <<<"$output"
+          echo "OK: image refuses to start and names every bad variable"
