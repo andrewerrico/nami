@@ -1,0 +1,10 @@
+legacy/
+dist/
+drizzle/
+coverage/
+pnpm-lock.yaml
+
+# Planning docs are hand-maintained prose with deliberate line wrapping.
+# Prettier pads markdown tables to the width of their widest cell, which makes
+# them unreadable in an editor. Formatting here is a human decision.
+*.md
