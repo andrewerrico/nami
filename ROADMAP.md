@@ -249,10 +249,27 @@ branches merged by PR, one per shippable slice.
 configured by hand and documented. Bot-side: welcome messages, persistent role
 picker, mod-log channel, `/setup` diagnostics.
 
-_Blocked on one decision before any code:_ Community mode has to be acceptable
-for this server, because Rules Screening and Onboarding both require it and it
-changes some server-level defaults. See §7. It also needs `GuildMembers`, which
-is toggled on in the portal but not yet requested in `src/core/client.ts`.
+_Unblocked — Community mode is a yes (§7)._ The remaining prerequisite is the
+`GuildMembers` intent, which is toggled on in the portal but not yet requested
+in `src/core/client.ts`.
+
+Community mode changes the welcome trigger, and the difference is easy to get
+wrong. With Rules Screening enabled, `guildMemberAdd` fires while the member is
+still behind the gate — `member.pending === true` — so welcoming there greets
+people who have not accepted the rules and may never appear. The correct trigger
+is `guildMemberUpdate` on the `pending` `true → false` transition. Both need
+`GuildMembers`.
+
+The role picker has its own trap: **select menu state is global to the message,
+not per-viewer**, so a pinned menu cannot show a member their current roles
+pre-selected. The working shape is a pinned *button* that opens an **ephemeral**
+message carrying the select menu, with defaults resolved from that member's
+roles. Use a `StringSelectMenu` over a curated list from `guild_config` — a
+`RoleSelectMenu` would let members grant themselves any role in the server.
+
+Four slices, four branches: welcome messages · persistent role picker · mod-log
+channel · `/setup` diagnostics (which reads `guild.fetchOnboarding()` and
+reports what Discord is already handling, rather than duplicating it).
 
 **Phase 2 — Moderation.** Timeout, kick, ban, purge, warn + history. Full audit
 logging. AutoMod configured natively alongside.
@@ -331,8 +348,29 @@ based on what the server actually asks for.
       therefore pinned to 6.0.3. Type-aware linting is worth more than compiler
       speed on a codebase this size. Tracking:
       github.com/typescript-eslint/typescript-eslint/issues/10940
-- [ ] Is Community mode acceptable for this server? Onboarding requires it, and
-      it changes some server-level defaults.
+- [x] **Community mode — decided: yes, and enabled now, while the server is
+      empty.** The bill is real — verification level pinned at "verified email"
+      with no way back to `None`, the explicit media filter applied to every
+      member, a permanent rules channel and mod-only updates channel, mandatory
+      2FA for anyone with admin/kick/ban, and Onboarding's own floor of seven
+      default channels with five open to `@everyone` for viewing *and* posting.
+
+      Every one of those is priced for a populated server. This one has no
+      members and no channel layout to preserve, so 2FA is a single toggle on
+      one account, nothing gets re-gated, and the channel floor is a greenfield
+      layout decision rather than a migration. The cost only rises from here.
+
+      The timing argument is the stronger half. **Onboarding runs once per
+      member, at join, and never again** — it does nothing retroactively.
+      Enabling it at zero members means every member the server ever has passes
+      through the gate; enabling it later leaves a permanently split population,
+      which is the exact gap the persistent role picker exists to cover. Better
+      that picker be a convenience than a repair.
+
+      It also does not make the server public. **Discovery is a separate opt-in
+      requiring 1,000 members and eight weeks of age**, so this does not
+      contradict "public listing out of scope" in §4 — Community is the
+      prerequisite tier, not the front door.
 - [ ] Does the old MySQL data still exist anywhere? If so, is any of it worth
       migrating, or do we start the economy fresh?
 - [ ] Keep credits and XP as one currency, or split "level" from "spendable"?
