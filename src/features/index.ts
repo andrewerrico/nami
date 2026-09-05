@@ -1,6 +1,7 @@
 import type { Feature } from "../core/types.js";
 
 import { feature as ping } from "./ping/index.js";
+import { feature as welcome } from "./welcome/index.js";
 
 /**
  * The feature registry — the one list the bot loads.
@@ -12,4 +13,4 @@ import { feature as ping } from "./ping/index.js";
  *
  * Adding a feature: one import, one array entry.
  */
-export const features: readonly Feature[] = [ping];
+export const features: readonly Feature[] = [ping, welcome];

@@ -28,13 +28,19 @@ const snowflake = (name: string) => text(name);
  * source. The legacy bot hardcoded its home server's IDs in 30 files, which is
  * why it could never join a second server without an edit.
  *
- * Deliberately almost empty at Phase 0. The columns that matter — welcome
- * channel, mod log channel, role-picker message — arrive in Phase 1 with the
- * features that read them, each as its own migration. A config column with no
- * consumer is just a guess about a feature not yet designed.
+ * Columns arrive with the feature that reads them, each as its own migration.
+ * A config column with no consumer is just a guess about a feature not yet
+ * designed, so the mod log and role-picker columns are still absent.
  */
 export const guildConfig = pgTable("guild_config", {
   guildId: snowflake("guild_id").primaryKey(),
+
+  /* Where welcome messages go. Nullable, and null is the default: a guild Nami
+     has just joined has not chosen a channel, and guessing one — posting to the
+     system channel, say — would put the bot in a channel nobody asked for. Null
+     means the feature is off, which is also how `/welcome disable` turns it off,
+     so there is one "not configured" state rather than two. */
+  welcomeChannelId: snowflake("welcome_channel_id"),
 
   /* `withTimezone` on every timestamp. A naive timestamp means the stored value
      depends on the server's local zone, which differs between a laptop and a

@@ -1,55 +1,30 @@
 import { sql } from "drizzle-orm";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { createDatabase, type Database } from "./db.js";
 import { guildConfig } from "./schema.js";
+import { integrationDatabaseUrl as url } from "../../test/database.js";
 
 /**
  * Integration tests against a real Postgres.
  *
- * Opt-in via `TEST_DATABASE_URL` — deliberately a *different* variable from
- * `DATABASE_URL`, so a normal `pnpm test` can never reach the database the bot
- * is pointed at. CI sets it to a service container; locally:
- *
- *   docker compose --profile dev up -d postgres
- *   TEST_DATABASE_URL=postgresql://nami:nami@localhost:5432/nami pnpm test
+ * Opt-in, loopback-only, and the migrations are applied once by
+ * `test/global-setup.ts` before any worker starts — see `test/database.ts` for
+ * the switch and the reasoning behind both.
  */
-const url = process.env.TEST_DATABASE_URL;
-
-/**
- * Second safety net. These tests write and delete rows, so being wrong about
- * the target is expensive. A hosted database is never loopback, so refusing
- * anything else makes "oops, that was production" structurally impossible
- * rather than merely unlikely.
- */
-function isLoopback(candidate: string): boolean {
-  const host = new URL(candidate).hostname;
-  return (
-    host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "[::1]"
-  );
-}
-
-if (url !== undefined && !isLoopback(url)) {
-  throw new Error(
-    `TEST_DATABASE_URL must point at a loopback host — refusing to run destructive ` +
-      `tests against ${new URL(url).hostname}.`,
-  );
-}
 
 describe.skipIf(url === undefined)("database integration", () => {
   let db: Database;
   let close: () => Promise<void>;
 
-  beforeAll(async () => {
+  /* Not `async`: the migrations are applied once by `test/global-setup.ts`, so
+     there is nothing left here to await. */
+  beforeAll(() => {
     const opened = createDatabase({ DATABASE_URL: url } as never);
     db = opened.db;
     close = async () => {
       await opened.client.end();
     };
-    // Proves the checked-in migrations actually apply to a clean database —
-    // the thing that is otherwise only ever tested by running them on prod.
-    await migrate(db, { migrationsFolder: "./drizzle" });
   });
 
   afterAll(async () => {
@@ -67,10 +42,14 @@ describe.skipIf(url === undefined)("database integration", () => {
           where table_name = 'guild_config' order by ordinal_position`,
     );
 
+    /* Order is `ordinal_position`, which is the order the migrations added the
+       columns — not the order they appear in `schema.ts`. `welcome_channel_id`
+       is last because 0001 appended it. */
     expect(rows.map((r) => r.column_name)).toEqual([
       "guild_id",
       "created_at",
       "updated_at",
+      "welcome_channel_id",
     ]);
     // Snowflakes are text, not bigint — they are unsigned 64-bit and the
     // maximum exceeds Postgres's signed bigint.
