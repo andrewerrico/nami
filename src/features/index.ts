@@ -1,5 +1,7 @@
 import type { Feature } from "../core/types.js";
 
+import { feature as flip } from "./flip-a-coin/index.js";
+import { feature as motivate } from "./motivation/index.js";
 import { feature as ping } from "./ping/index.js";
 
 /**
@@ -12,4 +14,4 @@ import { feature as ping } from "./ping/index.js";
  *
  * Adding a feature: one import, one array entry.
  */
-export const features: readonly Feature[] = [ping];
+export const features: readonly Feature[] = [flip, motivate, ping];
