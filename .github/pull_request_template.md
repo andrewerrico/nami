@@ -5,16 +5,6 @@
 
 <!-- What and why, in 1-3 sentences. Link the ROADMAP phase/slice if it has one. -->
 
-## Type of Change
-
-- [ ] `feat:` — a new feature
-- [ ] `fix:` — a bug fix
-- [ ] `chore:` — a chore or task that doesn't add a feature or fix a bug
-- [ ] `docs:` — documentation changes
-- [ ] `test:` — test changes
-- [ ] `refactor:` — code refactoring
-- [ ] `perf:` — performance improvements
-
 ## What has changed
 
 <!-- The substance. One bold-led paragraph per area of change.
