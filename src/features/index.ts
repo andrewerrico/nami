@@ -1,6 +1,7 @@
 import type { Feature } from "../core/types.js";
 
 import { feature as ping } from "./ping/index.js";
+import { feature as welcome } from "./welcome/index.js";
 import { feature as uptime } from "./uptime/index.js";
 
 /**
@@ -13,4 +14,4 @@ import { feature as uptime } from "./uptime/index.js";
  *
  * Adding a feature: one import, one array entry.
  */
-export const features: readonly Feature[] = [ping, uptime];
+export const features: readonly Feature[] = [ping, uptime, welcome];

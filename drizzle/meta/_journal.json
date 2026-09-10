@@ -8,6 +8,13 @@
       "when": 1788456790471,
       "tag": "0000_guild_config",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788615195755,
+      "tag": "0001_welcome_channel",
+      "breakpoints": true
     }
   ]
 }

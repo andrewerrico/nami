@@ -7,7 +7,8 @@ A Discord bot for a small gaming/streaming community. Ground-up rebuild of a
 - [`CLAUDE.md`](CLAUDE.md) — working rules and conventions.
 - [`IDEAS.md`](IDEAS.md) — parked backlog. Not a build queue.
 
-**Status:** Phase 0. The bot connects, serves `/ping`, and shuts down cleanly.
+**Status:** Phase 1 in progress. The bot connects, welcomes new arrivals,
+serves `/ping` and `/welcome`, and shuts down cleanly.
 
 ## Stack
 
@@ -74,6 +75,7 @@ src/
   schema.ts    the schema barrel drizzle-kit reads
 scripts/       migrate, register-commands
 drizzle/       checked-in migrations
+test/          integration-test opt-in and the one-off migration setup
 ```
 
 Features are grouped by feature, never by file type, and are listed explicitly
