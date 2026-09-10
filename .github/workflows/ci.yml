@@ -67,6 +67,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # `compose.yaml` decides whether a deploy works at all, and nothing else in
+      # CI reads it — a typo'd key would first surface as a failed Portainer
+      # deploy against production. `config` parses, interpolates and
+      # schema-validates the file; it rejects both an unknown key and an invalid
+      # enum value. No daemon needed, so this runs before the build.
+      #
+      # The dummy values only satisfy the `:?` guards in the file, which are
+      # there so a missing variable fails loudly rather than reaching a container
+      # as an empty string. Nothing here connects to anything.
+      - name: Validate compose.yaml
+        env:
+          DISCORD_TOKEN: ci
+          DISCORD_APPLICATION_ID: ci
+          DATABASE_URL: postgres://ci@localhost:5432/ci
+        run: docker compose config -q
+
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/build-push-action@v6
