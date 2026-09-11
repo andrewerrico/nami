@@ -333,6 +333,31 @@ based on what the server actually asks for.
       Worth remembering that RLS with no policies returns *zero rows* rather
       than an error, which would look exactly like data loss if we ever add a
       non-owner role (a restricted backup user, say).
+- [x] **Deploy — decided: self-hosted Docker Compose on the mini PC, built on
+      the host, no registry.** `main` is the artifact. Portainer clones this
+      repository on a stack update and builds the image there, so there is one
+      source of truth and no package to publish or authenticate against.
+
+      The cost: the mini PC compiles TypeScript on every deploy, and the image
+      that runs is not the one CI validated. Acceptable for one server. GHCR is
+      the escape hatch if builds start hurting — the `docker` job in CI already
+      builds with buildx and a gha cache, and would need only a login step and
+      `push: true`.
+
+      **Two Portainer behaviours that cost a day to learn.** Its stack update
+      does not pass `--build`, so under the default `missing` pull policy a
+      redeploy finds `nami:latest` already present and restarts the *previous*
+      image — a merged PR appears to deploy while the old code keeps serving,
+      and nothing errors. `pull_policy: build` in `compose.yaml` is what makes
+      the rebuild unconditional. Separately, the **"pull and redeploy" option
+      must stay off**: it asks a registry for `nami:latest`, which is published
+      nowhere, and fails with `pull access denied`. Plain redeploy only.
+
+      Also: `Images → Build a new image` in Portainer posts to the Docker API's
+      classic builder, which rejects the `RUN --mount=type=cache` lines in the
+      Dockerfile. Stack deploys run Portainer's bundled compose, which uses
+      BuildKit and handles them. Build through the stack, never that page.
+
 - [ ] **Backups.** Supabase free has none. `pg_dump` on a schedule to off-box
       storage is the minimum bar before any economy data exists. Not urgent
       while the schema is config-only; becomes gating in Phase 4, when XP and

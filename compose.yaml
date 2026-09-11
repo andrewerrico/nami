@@ -38,6 +38,23 @@ services:
   bot:
     build: *nami-build
     image: nami:latest
+
+    # Rebuild from source on every deploy, and never consult a registry.
+    #
+    # `nami:latest` is built on this host and published nowhere, so the default
+    # `missing` policy had two distinct failure modes. Portainer's "pull and
+    # redeploy" asked Docker Hub for `docker.io/library/nami` and died with
+    # `pull access denied`. A plain redeploy found the tag already present,
+    # skipped the build, and restarted the *previous* image — so a merged PR
+    # looked deployed while the old code kept serving, which is the worse of the
+    # two because nothing fails.
+    #
+    # `build` makes the rebuild unconditional, which is what Portainer does not
+    # do for us: its stack update never passes `--build`. Leave the re-pull
+    # option switched off regardless — `docker compose pull` still treats a
+    # buildable service as pullable unless asked not to.
+    pull_policy: build
+
     container_name: nami
     environment: *nami-env
 
@@ -82,6 +99,7 @@ services:
   migrate:
     build: *nami-build
     image: nami:latest
+    pull_policy: build # See `bot` above.
     profiles: [tools]
     environment: *nami-env
     command: ["node", "dist/scripts/migrate.js"]
@@ -94,6 +112,7 @@ services:
   register:
     build: *nami-build
     image: nami:latest
+    pull_policy: build # See `bot` above.
     profiles: [tools]
     environment: *nami-env
     command: ["node", "dist/scripts/register-commands.js"]
